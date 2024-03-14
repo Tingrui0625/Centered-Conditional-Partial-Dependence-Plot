@@ -566,47 +566,50 @@ model = lrn$train(task = task)
 q<-quantile(data[["x4"]], 0:h/h)
 pred <- Predictor$new(model=model$model, data = data, y = "y")
 
+n_feature=switch(example_name,
+"example3"=3,
+"example4"=5)
 #sum of xswcpdp for all variables of all points
 #5 is taken here due to we use example 4
-xswcpdp_sum = data.table::setDF(setNames(lapply(1:5, function(i) {
+xswcpdp_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
   feature_i=paste0("x",i)
   effect2 (mod = model$model, data = data, feature = feature_i, target = "y",
            predict.fun = predict, h = 999, method = "xs-wcpdp",gower.power = 10,kernel.width=xs[[i]])$y
-}), 1:5))
-for(i in 1:5){
+}), 1:n_feature))
+for(i in 1:n_feature){
   xswcpdp_sum[,i]=xswcpdp_sum[,i]-mean(xswcpdp_sum[,i])
 }
 
 #sum of ale for all variables of all points
-ale_sum = data.table::setDF(setNames(lapply(1:5, function(i) {
+ale_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
   #h=999
   feature_i=paste0("x",i)
   q<-sort(data[[feature_i]])
   FeatureEffect$new(pred, feature = feature_i, method = "ale", grid.points =q)$results$.value
-}), 1:5))
-for(i in 1:5){
-  ale_sum[,i]=ale_sum[,i]-mean(ale_sum[,i])
-}
+}), 1:n_feature))
+#for(i in 1:n_feature){
+#  ale_sum[,i]=ale_sum[,i]-mean(ale_sum[,i])
+#}
 
 #sum of ale for all variables of all points
-pdp_sum = data.table::setDF(setNames(lapply(1:5, function(i) {
+pdp_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
   #h=999
   feature_i=paste0("x",i)
   q<-sort(data[[feature_i]])
   FeatureEffect$new(pred, feature = feature_i, method = "pdp", grid.points =q)$results$.value
-}), 1:5))
-for(i in 1:5){
+}), 1:n_feature))
+for(i in 1:n_feature){
   pdp_sum[,i]=pdp_sum[,i]-mean(pdp_sum[,i])
 }
 
 #R^2=0.7210609 for PDP decomposition
-var(rowSums(pdp_sum))/var(data$y)
+var(rowSums(pdp_sum))/var(model$model$fitted.values)
 
 #R^2=0.8082447 for ALE decomposition
-var(rowSums(ale_sum))/var(data$y)
+var(rowSums(ale_sum))/var(model$model$fitted.values)
 
 #R^2=0.8237816 for ccPDP decomposition
-var(rowSums(xswcpdp))/var(data$y)
+var(rowSums(xswcpdp_sum))/var(model$model$fitted.values)
 
 #plotting the dicrepancy
 y=rowSums(xswcpdp_sum)
