@@ -563,7 +563,6 @@ X = data[,setdiff(names(data),"y")]
 task = as_task_regr(data,target="y")
 lrn = lrn("regr.nnet",size=size,decay=decay,trace=FALSE)
 model = lrn$train(task = task)
-q<-quantile(data[["x4"]], 0:h/h)
 pred <- Predictor$new(model=model$model, data = data, y = "y")
 
 n_feature=switch(example_name,
