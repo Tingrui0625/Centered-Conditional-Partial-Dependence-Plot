@@ -432,7 +432,6 @@ effect5 = function(mod, data, feature, target, kernel.width, gower.power = 1, pr
 # 2. losses(model fidelity) ------------------------------------------------------------------
 #loss functions to calculate the discrepancies to the prediction values of all data points
 #n=1000 observations are generated 
-feature=data[1:(ncol(data)-1)]
 custom_loss1=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
     effect1 (mod = model, data = data, feature = names(data)[i], target = "y",
@@ -558,16 +557,15 @@ e-s
 set.seed(41)
 #data generation function from 4. Computing ccPDP.R file
 data = create_xor_corr(n = 1000)
-
+n_feature=switch(example_name,
+"example3"=3,
+"example4"=5,
+"case1"=11)
 X = data[,setdiff(names(data),"y")]
 task = as_task_regr(data,target="y")
 lrn = lrn("regr.nnet",size=size,decay=decay,trace=FALSE)
 model = lrn$train(task = task)
 pred <- Predictor$new(model=model$model, data = data, y = "y")
-
-n_feature=switch(example_name,
-"example3"=3,
-"example4"=5)
 #sum of xswcpdp for all variables of all points
 #5 is taken here due to we use example 4
 xswcpdp_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
