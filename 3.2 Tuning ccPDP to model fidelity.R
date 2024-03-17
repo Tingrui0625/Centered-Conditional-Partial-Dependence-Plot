@@ -432,56 +432,60 @@ effect5 = function(mod, data, feature, target, kernel.width, gower.power = 1, pr
 # 2. losses(model fidelity) ------------------------------------------------------------------
 #loss functions to calculate the discrepancies to the prediction values of all data points
 #n=1000 observations are generated 
+feature_n=switch(example_name,
+                 "example3"=3,
+                 "example4"=5,
+                 "case1"=11)
 custom_loss1=function(xs,model,data){
-  curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect1 (mod = model, data = data, feature = names(data)[i], target = "y",
+  curve = data.table::setDF(setNames(lapply(1:feature_n, function(i) {
+    effect1 (mod = model, data = data, feature = names(data)[i], target = "quality",
              predict.fun = predict, h = 999, method = "xs-wcpdp",gower.power = 10,kernel.width=xs[[i]])$y
-  }), 1:5))
+  }), 1:feature_n))
   pre=as.numeric(model$fitted.values)
   pre=pre-mean(pre)
   sum((rowSums(curve)-as.numeric(pre))^2)/1000
 }
 custom_loss2=function(xs,model,data){
-  curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect1 (mod = model, data = data, feature = names(data)[i], target = "y",
+  curve = data.table::setDF(setNames(lapply(1:feature_n, function(i) {
+    effect1 (mod = model, data = data, feature = names(data)[i], target = "quality",
              predict.fun = predict, h = 999, method = "xc-wcpdp",kernel.width=0.6,gower.power=xs[[i]])$y
-  }), 1:5))
+  }), 1:feature_n))
   pre=as.numeric(model$fitted.values)
   pre=pre-mean(pre)
   sum((rowSums(curve)-as.numeric(pre))^2)/1000
 }
 custom_loss3=function(xs,model,data){
-  curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect2 (mod = model, data = data, feature = names(data)[i], target = "y",
+  curve = data.table::setDF(setNames(lapply(1:feature_n, function(i) {
+    effect2 (mod = model, data = data, feature = names(data)[i], target = "quality",
              predict.fun = predict, h = 999, method = "xs-wcpdp",gower.power = 10,kernel.width=xs[[i]])$y
-  }), 1:5))
+  }), 1:feature_n))
   pre=as.numeric(model$fitted.values)
   pre=pre-mean(pre)
   sum((rowSums(curve)-as.numeric(pre))^2)/1000
 }
 custom_loss4=function(xs,model,data){
-  curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect2 (mod = model, data = data, feature = names(data)[i], target = "y",
+  curve = data.table::setDF(setNames(lapply(1:feature_n, function(i) {
+    effect2 (mod = model, data = data, feature = names(data)[i], target = "quality",
              predict.fun = predict, h = 999, method = "xc-wcpdp",kernel.width=0.6,gower.power=xs[[i]])$y
-  }), 1:5))
+  }), 1:feature_n))
   pre=as.numeric(model$fitted.values)
   pre=pre-mean(pre)
   sum((rowSums(curve)-as.numeric(pre))^2)/1000
 }
 custom_loss5=function(xs,model,data){
-  curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect3 (mod = model, data = data, feature = names(data)[i], target = "y",
+  curve = data.table::setDF(setNames(lapply(1:feature_n, function(i) {
+    effect3 (mod = model, data = data, feature = names(data)[i], target = "quality",
              predict.fun = predict, h = 999, method = "xs-xc-pdp",gamma=xs[[i]])$y
-  }), 1:5))
+  }), 1:feature_n))
   pre=as.numeric(model$fitted.values)
   pre=pre-mean(pre)
   sum((rowSums(curve)-as.numeric(pre))^2)/1000
 }
 custom_loss6=function(xs,model,data){
-  curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect4 (mod = model, data = data, feature = names(data)[i], target = "y",
+  curve = data.table::setDF(setNames(lapply(1:feature_n, function(i) {
+    effect4 (mod = model, data = data, feature = names(data)[i], target = "quality",
              predict.fun = predict, h = 999, method = "xs-xc-pdp",gamma=xs[[i]])$y
-  }), 1:5))
+  }), 1:feature_n))
   pre=as.numeric(model$fitted.values)
   pre=pre-mean(pre)
   sum((rowSums(curve)-as.numeric(pre))^2)/1000
@@ -504,12 +508,12 @@ tune=function(combi){
   #lrn = lrn("regr.nnet",size=size,decay=decay,trace=FALSE)
   #model = lrn$train(task = task)$model
 
-  if(combi=="eff3_gamma"|combi=="eff4_gamma"){
+    if(combi=="eff3_gamma"|combi=="eff4_gamma"){
     #upper bound for gamma
-    upper1=rep(20,5)
+    upper1=rep(20,feature_n)
   }else{
     #upper bound for kernel.width and gower.power
-    upper1=rep(2,5)
+    upper1=rep(2,feature_n)
     }
   
   custom_loss=switch(combi,
@@ -522,7 +526,7 @@ tune=function(combi){
   
   #loss minimization
   lgr::get_logger("bbotk")$set_threshold("warn")
-  result=bb_optimize(custom_loss,lower=rep(0,5),upper=upper1,max_evals=200,data =data,model=model)
+  result=bb_optimize(custom_loss,lower=rep(0,feature_n),upper=upper1,max_evals=200,data =data_train,model=model$model)
   return(result$par)
 }
 
