@@ -432,10 +432,10 @@ effect5 = function(mod, data, feature, target, kernel.width, gower.power = 1, pr
 # 2. losses(model fidelity) ------------------------------------------------------------------
 #loss functions to calculate the discrepancies to the prediction values of all data points
 #n=1000 observations are generated 
+feature=data[1:(ncol(data)-1)]
 custom_loss1=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    feature_i=paste0("x",i)
-    effect1 (mod = model, data = data, feature = feature_i, target = "y",
+    effect1 (mod = model, data = data, feature = feature = names(data_train)[i], target = "y",
              predict.fun = predict, h = 999, method = "xs-wcpdp",gower.power = 10,kernel.width=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -444,8 +444,7 @@ custom_loss1=function(xs,model,data){
 }
 custom_loss2=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    feature_i=paste0("x",i)
-    effect1 (mod = model, data = data, feature = feature_i, target = "y",
+    effect1 (mod = model, data = data, feature = names(data_train)[i], target = "y",
              predict.fun = predict, h = 999, method = "xc-wcpdp",kernel.width=0.6,gower.power=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -454,8 +453,7 @@ custom_loss2=function(xs,model,data){
 }
 custom_loss3=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    feature_i=paste0("x",i)
-    effect2 (mod = model, data = data, feature = feature_i, target = "y",
+    effect2 (mod = model, data = data, feature = names(data_train)[i], target = "y",
              predict.fun = predict, h = 999, method = "xs-wcpdp",gower.power = 10,kernel.width=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -464,8 +462,7 @@ custom_loss3=function(xs,model,data){
 }
 custom_loss4=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    feature_i=paste0("x",i)
-    effect2 (mod = model, data = data, feature = feature_i, target = "y",
+    effect2 (mod = model, data = data, feature = names(data_train)[i], target = "y",
              predict.fun = predict, h = 999, method = "xc-wcpdp",kernel.width=0.6,gower.power=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -474,8 +471,7 @@ custom_loss4=function(xs,model,data){
 }
 custom_loss5=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    feature_i=paste0("x",i)
-    effect3 (mod = model, data = data, feature = feature_i, target = "y",
+    effect3 (mod = model, data = data, feature = names(data_train)[i], target = "y",
              predict.fun = predict, h = 999, method = "xs-xc-pdp",gamma=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -484,8 +480,7 @@ custom_loss5=function(xs,model,data){
 }
 custom_loss6=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    feature_i=paste0("x",i)
-    effect4 (mod = model, data = data, feature = feature_i, target = "y",
+    effect4 (mod = model, data = data, feature = names(data_train)[i], target = "y",
              predict.fun = predict, h = 999, method = "xs-xc-pdp",gamma=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -496,13 +491,12 @@ custom_loss6=function(xs,model,data){
 # 3. tuning function -----------------------------------------------------------
 tune=function(combi){
   #data generation function is run from 4. Computing ccPDP.R
-  data = create_xor_corr(n = 1000)
-  X = data[,setdiff(names(data),"y")]
-  
-  #training the model
-  task = as_task_regr(data,target="y")
-  lrn = lrn("regr.nnet",size=size,decay=decay)
-  model = lrn$train(task = task)$model
+  X = data_train[,setdiff(names(data_train),"quality")]
+  size=11
+  decay=0.0911569
+  task = as_task_regr(data_train,target="quality")
+  lrn = lrn("regr.nnet",size=size,decay=decay,trace=FALSE)
+  model = lrn$train(task = task)
 
   if(combi=="eff3_gamma"|combi=="eff4_gamma"){
     #upper bound for gamma
@@ -522,7 +516,7 @@ tune=function(combi){
   
   #loss minimization
   lgr::get_logger("bbotk")$set_threshold("warn")
-  result=bb_optimize(custom_loss,lower=rep(0,5),upper=upper1,max_evals=200)
+  result=bb_optimize(custom_loss,lower=rep(0,5),upper=upper1,max_evals=200,data =data_train,model=model$model)
   return(result$par)
 }
 
@@ -555,7 +549,6 @@ e-s
 
 # evaluation --------------------------------------------------------------
 set.seed(41)
-h = 20
 #data generation function from 4. Computing ccPDP.R file
 data = create_xor_corr(n = 1000)
 
