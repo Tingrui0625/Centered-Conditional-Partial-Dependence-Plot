@@ -637,3 +637,125 @@ ggplot() +
 #Loss value of xswcpdp
 sum((data_plot$y-data_true$y)^2)/1000
 #0.04982344 at kernel.width=0.6
+
+
+# evaluation in parallel --------------------------------------------------
+
+set_seed_number=41
+core_number = 8
+iteration_number = 112
+
+s=Sys.time()
+cl<- makeCluster(core_number)      
+registerDoParallel(cl)       
+mydata<- foreach(
+  j=1:iteration_number,
+  .combine=rbind,
+  .packages = c("iml","R.utils","mvtnorm","patchwork","data.table",
+                "StatMatch","dplyr","mlr3","mlr3verse","mlr3learners","nnet","mgcv","MASS")
+) %dopar% {
+  set.seed(set_seed_number+j)
+  do_once()
+}
+stopImplicitCluster()
+stopCluster(cl)
+
+mydata=as.data.frame(mydata)
+colnames(mydata)=c("pdp","ale","ccpdp1","ccpdp2","ccpdp3","ccpdp4","ccpdp5")
+write.csv(mydata,file=paste0(example_name,"_R2.csv"))
+
+e=Sys.time()
+e-s
+
+
+pars=read.csv("pars_fidelity/example3_parameters_fidelity.csv")
+#data generation function from 4. Computing ccPDP.R file
+do_once=function(){
+  result=matrix(0,nrow=1,ncol=7)
+  data = create_xor_corr(n = 1000)
+  
+  X = data[,setdiff(names(data),"y")]
+  task = as_task_regr(data,target="y")
+  lrn = lrn("regr.nnet",size=size,decay=decay,trace=FALSE)
+  model = lrn$train(task = task)
+  pred <- Predictor$new(model=model$model, data = data, y = "y")
+  
+  ccpdp1_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
+    feature_i=paste0("x",i)
+    effect1 (mod = model$model, data = data, feature = feature_i, target = "y",
+             predict.fun = predict, h = 999, method = "xs-wcpdp",gower.power = 10,kernel.width=pars[i,2])$y
+  }), 1:n_feature))
+  for(i in 1:n_feature){
+    ccpdp1_sum[,i]=ccpdp1_sum[,i]-mean(ccpdp1_sum[,i])
+  }
+  
+  ccpdp2_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
+    feature_i=paste0("x",i)
+    effect2 (mod = model$model, data = data, feature = feature_i, target = "y",
+             predict.fun = predict, h = 999, method = "xs-wcpdp",gower.power = 10,kernel.width=pars[i,4])$y
+  }), 1:n_feature))
+  for(i in 1:n_feature){
+    ccpdp2_sum[,i]=ccpdp2_sum[,i]-mean(ccpdp2_sum[,i])
+  }
+  
+  ccpdp3_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
+    feature_i=paste0("x",i)
+    effect3 (mod = model$model, data = data, feature = feature_i, target = "y",
+             predict.fun = predict, h = 999, method = "xs-xc-pdp",gamma=pars[i,6])$y
+  }), 1:n_feature))
+  for(i in 1:n_feature){
+    ccpdp3_sum[,i]=ccpdp3_sum[,i]-mean(ccpdp3_sum[,i])
+  }
+  
+  ccpdp4_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
+    feature_i=paste0("x",i)
+    effect4 (mod = model$model, data = data, feature = feature_i, target = "y",
+             predict.fun = predict, h = 999, method = "xs-xc-pdp",gamma=pars[i,7])$y
+  }), 1:n_feature))
+  for(i in 1:n_feature){
+    ccpdp4_sum[,i]=ccpdp4_sum[,i]-mean(ccpdp4_sum[,i])
+  }
+  
+  ccpdp5_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
+    feature_i=paste0("x",i)
+    effect5 (mod = model$model, data = data, feature = feature_i, target = "y",
+             predict.fun = predict, h = 999, method = "xs-xc-pdp",gower.power =pars[i,5],kernel.width=pars[i,4])$y
+  }), 1:n_feature))
+  for(i in 1:n_feature){
+    ccpdp5_sum[,i]=ccpdp5_sum[,i]-mean(ccpdp5_sum[,i])
+  }
+  
+  
+  ale_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
+    feature_i=paste0("x",i)
+    q<-sort(data[[feature_i]])
+    FeatureEffect$new(pred, feature = feature_i, method = "ale", grid.points =q)$results$.value
+  }), 1:n_feature))
+  for(i in 1:n_feature){
+    ale_sum[,i]=ale_sum[,i]-mean(ale_sum[,i])
+  }
+  pdp_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
+    feature_i=paste0("x",i)
+    q<-sort(data[[feature_i]])
+    FeatureEffect$new(pred, feature = feature_i, method = "pdp", grid.points =q)$results$.value
+  }), 1:n_feature))
+  for(i in 1:n_feature){
+    pdp_sum[,i]=pdp_sum[,i]-mean(pdp_sum[,i])
+  }
+  
+  result[1,1]=var(rowSums(pdp_sum))/var(model$model$fitted.values)
+  
+  result[1,2]=var(rowSums(ale_sum))/var(model$model$fitted.values)
+  
+  result[1,3]=var(rowSums(ccpdp1_sum))/var(model$model$fitted.values)
+  
+  result[1,4]=var(rowSums(ccpdp2_sum))/var(model$model$fitted.values)
+  
+  result[1,5]=var(rowSums(ccpdp3_sum))/var(model$model$fitted.values)
+  
+  result[1,6]=var(rowSums(ccpdp4_sum))/var(model$model$fitted.values)
+  
+  result[1,7]=var(rowSums(ccpdp5_sum))/var(model$model$fitted.values)
+  
+  return(result)
+}
