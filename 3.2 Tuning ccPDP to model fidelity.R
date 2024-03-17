@@ -435,7 +435,7 @@ effect5 = function(mod, data, feature, target, kernel.width, gower.power = 1, pr
 feature=data[1:(ncol(data)-1)]
 custom_loss1=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect1 (mod = model, data = data, feature = feature = names(data_train)[i], target = "y",
+    effect1 (mod = model, data = data, feature = names(data)[i], target = "y",
              predict.fun = predict, h = 999, method = "xs-wcpdp",gower.power = 10,kernel.width=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -444,7 +444,7 @@ custom_loss1=function(xs,model,data){
 }
 custom_loss2=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect1 (mod = model, data = data, feature = names(data_train)[i], target = "y",
+    effect1 (mod = model, data = data, feature = names(data)[i], target = "y",
              predict.fun = predict, h = 999, method = "xc-wcpdp",kernel.width=0.6,gower.power=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -453,7 +453,7 @@ custom_loss2=function(xs,model,data){
 }
 custom_loss3=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect2 (mod = model, data = data, feature = names(data_train)[i], target = "y",
+    effect2 (mod = model, data = data, feature = names(data)[i], target = "y",
              predict.fun = predict, h = 999, method = "xs-wcpdp",gower.power = 10,kernel.width=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -462,7 +462,7 @@ custom_loss3=function(xs,model,data){
 }
 custom_loss4=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect2 (mod = model, data = data, feature = names(data_train)[i], target = "y",
+    effect2 (mod = model, data = data, feature = names(data)[i], target = "y",
              predict.fun = predict, h = 999, method = "xc-wcpdp",kernel.width=0.6,gower.power=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -471,7 +471,7 @@ custom_loss4=function(xs,model,data){
 }
 custom_loss5=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect3 (mod = model, data = data, feature = names(data_train)[i], target = "y",
+    effect3 (mod = model, data = data, feature = names(data)[i], target = "y",
              predict.fun = predict, h = 999, method = "xs-xc-pdp",gamma=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -480,7 +480,7 @@ custom_loss5=function(xs,model,data){
 }
 custom_loss6=function(xs,model,data){
   curve = data.table::setDF(setNames(lapply(1:5, function(i) {
-    effect4 (mod = model, data = data, feature = names(data_train)[i], target = "y",
+    effect4 (mod = model, data = data, feature = names(data)[i], target = "y",
              predict.fun = predict, h = 999, method = "xs-xc-pdp",gamma=xs[[i]])$y
   }), 1:5))
   pre=as.numeric(model$fitted.values)
@@ -491,12 +491,19 @@ custom_loss6=function(xs,model,data){
 # 3. tuning function -----------------------------------------------------------
 tune=function(combi){
   #data generation function is run from 4. Computing ccPDP.R
-  X = data_train[,setdiff(names(data_train),"quality")]
-  size=11
-  decay=0.0911569
-  task = as_task_regr(data_train,target="quality")
-  lrn = lrn("regr.nnet",size=size,decay=decay,trace=FALSE)
-  model = lrn$train(task = task)
+  data = create_xor_corr(n = 1000)# seed = 123
+  X = data[,setdiff(names(data),"y")]
+  task = as_task_regr(data,target="y")
+  lrn = lrn("regr.nnet",size=size,decay=decay)
+  model = lrn$train(task = task)$model
+
+  #functions for case1
+  #X = data_train[,setdiff(names(data_train),"quality")]
+  #size=11
+  #decay=0.0911569
+  #task = as_task_regr(data_train,target="quality")
+  #lrn = lrn("regr.nnet",size=size,decay=decay,trace=FALSE)
+  #model = lrn$train(task = task)$model
 
   if(combi=="eff3_gamma"|combi=="eff4_gamma"){
     #upper bound for gamma
@@ -516,7 +523,7 @@ tune=function(combi){
   
   #loss minimization
   lgr::get_logger("bbotk")$set_threshold("warn")
-  result=bb_optimize(custom_loss,lower=rep(0,5),upper=upper1,max_evals=200,data =data_train,model=model$model)
+  result=bb_optimize(custom_loss,lower=rep(0,5),upper=upper1,max_evals=200,data =data,model=model)
   return(result$par)
 }
 
