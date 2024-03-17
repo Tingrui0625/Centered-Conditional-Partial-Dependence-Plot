@@ -586,18 +586,18 @@ for(i in 1:n_feature){
 ale_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
   #h=999
   feature_i=paste0("x",i)
-  q<-sort(data[[feature_i]])
+  q<-data[[feature_i]]
   FeatureEffect$new(pred, feature = feature_i, method = "ale", grid.points =q)$results$.value
 }), 1:n_feature))
-#for(i in 1:n_feature){
+# for(i in 1:n_feature){
 #  ale_sum[,i]=ale_sum[,i]-mean(ale_sum[,i])
-#}
+# }
 
 #sum of ale for all variables of all points
 pdp_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
   #h=999
   feature_i=paste0("x",i)
-  q<-sort(data[[feature_i]])
+  q<-data[[feature_i]]
   FeatureEffect$new(pred, feature = feature_i, method = "pdp", grid.points =q)$results$.value
 }), 1:n_feature))
 for(i in 1:n_feature){
