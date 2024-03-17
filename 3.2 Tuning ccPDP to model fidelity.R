@@ -572,10 +572,11 @@ model = lrn$train(task = task)
 pred <- Predictor$new(model=model$model, data = data, y = "y")
 #sum of xswcpdp for all variables of all points
 #5 is taken here due to we use example 4
+pars=read.csv("Tuned pars/pars_fidelity/example3parameters_fidelity.csv")
 xswcpdp_sum = data.table::setDF(setNames(lapply(1:n_feature, function(i) {
   feature_i=paste0("x",i)
   effect2 (mod = model$model, data = data, feature = feature_i, target = "y",
-           predict.fun = predict, h = 999, method = "xs-wcpdp",gower.power = 10,kernel.width=xs[[i]])$y
+           predict.fun = predict, h = 999, method = "xs-wcpdp",gower.power = 10,kernel.width=pars[3,i+1])$y
 }), 1:n_feature))
 for(i in 1:n_feature){
   xswcpdp_sum[,i]=xswcpdp_sum[,i]-mean(xswcpdp_sum[,i])
